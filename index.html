@@ -1,0 +1,51 @@
+<!DOCTYPE HTML>
+<html lang="ru">
+
+<head>
+  <meta charset="utf-8">
+  <title>PJAX test page</title>
+
+  <!--[if lt IE 9]>
+     <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+ <![endif]-->
+  <link rel="stylesheet" href="./assets/prod/style.css">
+
+</head>
+
+<body>
+
+  <header>
+    <h1>Тестовая страница</h1>
+  </header>
+
+  <main>
+    <article id="container">
+      <div class="item">
+        <div class="item-header">Item header 1</div>
+        <div class="item-content">Item content 1</div>
+      </div>
+
+      <div class="item">
+        <div class="item-header">Item header 2</div>
+        <div class="item-content">Item content 2</div>
+      </div>
+
+      <div class="pagination-container">
+        <p>1 - 37 из 90</p>
+        <ul class="pagination">
+          <li class="active">1</li>
+          <li><a href="/ajax/page2.html?page=2">2</a></li>
+          <li><a href="/ajax/page3.html?page=3">3</a></li>
+        </ul>
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <script src="./bower_components/jquery/dist/jquery.min.js"></script>
+    <script src="./assets/prod/all.js"></script>
+  </footer>
+
+</body>
+
+</html>
