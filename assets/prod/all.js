@@ -43,8 +43,6 @@
 
     // EVENT: state changed. Run at forward\backward action
     var popstate = function(e) {
-      console.log(e);
-      console.log(location);
       self.query = location.pathname;
       self.params = $.parseParams(location.search.split('?')[1] || '');
       // load page content
