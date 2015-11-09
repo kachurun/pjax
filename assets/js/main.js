@@ -2,8 +2,10 @@
   $(function(){
     $('#container').pjax({
       pagination: '.pagination-container .pagination a',
+      lazyLoad: '.load-more',
+      lazyContainer: '.pagination-container',
       special_params: {
-        is_ajax: true
+        isAjax: true
       },
       callbacks: {
         afterLoad: function(obj){

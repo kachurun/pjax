@@ -2,8 +2,10 @@
   $(function(){
     $('#container').pjax({
       pagination: '.pagination-container .pagination a',
+      lazyLoad: '.load-more',
+      lazyContainer: '.pagination-container',
       special_params: {
-        is_ajax: true
+        isAjax: true
       },
       callbacks: {
         afterLoad: function(obj){
@@ -23,22 +25,25 @@
   var Paginator = function(container, options) {
     var self = this;
 
-    this.container = container;
-    this.pagination = options.pagination;
-    this.query = options.query;
-    this.params = options.params;
-    this.special_params = options.special_params;
-    this.method = options.method;
-    this.cache = options.cache;
-    this.fromCache = false;
-    this.callbacks = options.callbacks;
+    self.container = container;
+    self.pagination = options.pagination;
+    self.lazyLoad = options.lazyLoad;
+    self.lazyContainer = options.lazyContainer;
+    self.url = '';
+    self.query = options.query;
+    self.params = options.params;
+    self.special_params = options.special_params;
+    self.method = options.method;
+    self.cache = options.cache;
+    self.fromCache = false;
+    self.callbacks = options.callbacks;
 
     // events on pagination
     self.eventHandle();
 
-    // if query was set, load page via ajax
+    // if query was set, preload page via ajax
     if (self.query) {
-      self.ajaxLoad();
+      self.ajaxLoad(self.container);
     }
 
     // EVENT: state changed. Run at forward\backward action
@@ -46,7 +51,7 @@
       self.query = location.pathname;
       self.params = $.parseParams(location.search.split('?')[1] || '');
       // load page content
-      self.ajaxLoad();
+      self.ajaxLoad(self.container);
     };
 
     window.removeEventListener('popstate', popstate, false);
@@ -61,6 +66,8 @@
   // default settings
   Paginator.default = {
     pagination: '',
+    lazyLoad: null,
+    lazyContainer: null,
     query: '',
     params: {},
     special_params: {},
@@ -80,33 +87,51 @@
   // pagination events
   Paginator.prototype.eventHandle = function() {
     var self = this;
+    // pagination keys
     if (self.pagination) {
       $(self.pagination).on('click', function(e) {
         e.preventDefault();
-        var url = $(this).attr('href');
 
-        self.query = url.split('?')[0] || url;
-        self.params = $.parseParams(url.split('?')[1] || '');
+        // set query and params for request
+        self.url = $(this).attr('href');
+        self.query = _parseUrl(self.url)[0];
+        self.params = _parseUrl(self.url)[1];
 
-        // history api: set path
-        history.pushState(null, null, url);
         // ajax page load
-        self.ajaxLoad();
+        self.ajaxLoad(self.container);
       });
     }
+    // paginations lazy load button
+    if (self.lazyLoad && self.lazyContainer) {
+      $(self.lazyLoad).on('click', function(e){
+        e.preventDefault();
+
+        // set query and params for request
+        self.url = $(this).attr('href');
+        self.query = _parseUrl(self.url)[0];
+        self.params = _parseUrl(self.url)[1];
+
+        // ajax page load.
+        // lazy flag on
+        self.isLazy = true;
+        self.ajaxLoad(self.lazyContainer);
+      });
+    }
+
   };
 
   // load page via ajax
-  Paginator.prototype.ajaxLoad = function() {
-    var self = this,
-        params = $.extend(self.params, self.special_params),
-        cache_id = self.query+'_'+$.param(params),
-        cache_index = $.findByKey(self.cache.items, {id: cache_id});
+  Paginator.prototype.ajaxLoad = function(container) {
+    var self = this;
+    var params = $.extend(self.params, self.special_params);
+    var cache_id = self.query+'_'+$.param(params);
+    var cache_index = $.findByKey(self.cache.items, {id: cache_id});
 
     // beforeLoad callback
     self.callback('beforeLoad', self);
-    // find it in cache first
-    if (self.cache.enabled && cache_index) {
+
+    // find it in cache first and load
+    if (self.cache.enabled && cache_index && ! self.isLazy) {
       self.fromCache = true;
       // insert into container
       $(self.container).html(self.cache.items[cache_index].data);
@@ -134,21 +159,36 @@
               data: data
             });
           }
-          // insert into container
-          $(self.container).html(data);
+
+          if (! self.isLazy) {
+            // insert into container
+            $(container).html(data);
+
+            // history api: set path
+            history.pushState(null, null, self.url);
+          } else {
+            // insert instead container
+            $(container).replaceWith(data);
+
+            // lazy flag off
+            self.isLazy = false;
+          }
+
           // update events
           self.eventHandle();
+
           // afterLoad callback
           self.callback('afterLoad', self);
         } else {
-          alert('Empty response');
+          // onError callback
+          self.callback('onError', {status: 'empty-response', statusText: 'Empty Response from server'});
         }
       })
       .fail(function(error){
-        alert(error);
         // onError callback
         self.callback('onError', error);
       });
+
   };
 
   // remove old cache
@@ -185,6 +225,15 @@
       self.callbacks[name](data);
   };
 
+  // return parsed url, e.g http://mysite.com/?p1=value1&p2=value2
+  // returned ['http://mysite.com/', {p1:value1, p2:value2}]
+  function _parseUrl(url) {
+    var result = [];
+    result.push( url.split('?')[0] || url );
+    result.push( $.parseParams(url.split('?')[1] || '') );
+    return result;
+  }
+
   $.fn.pjax = function(options) {
     var args = Array.prototype.slice.call(arguments, 1);
     return this.each(function() {
@@ -204,25 +253,37 @@
 
 
 // -------------------------------------------------------------------------- common
-(function($) {
-  $.findByKey = function(array, find) {
-    var result = [];
-    array.forEach(function(value, index) {
+/*
+* Find By key
+* used for search object index in array of objects
+* See example at http://jsfiddle.net/kachurun/mgacd3at/
+*/
+(function ($) {
+    $.findByKey = function (array, find) {
+        var result = [];
+        array.forEach(function (object, index) {
+            for (var key in find) {
+                var value = find[key];
+                var key = key.split('.');
+                var temp = (JSON.parse(JSON.stringify(object)));
+                key.forEach(function (keyv, keyi) {
+                    if (keyv in temp) {
+                        temp = temp[keyv];
+                        if (key.length - 1 === keyi && value == temp) {
+                            result.push(index);
+                        }
+                    }
+                });
+            }
 
-      for (var key in value) {
-        if (value[key] == find[key]) {
-          result.push(index);
+        });
+        if (!result.length) {
+            result = null;
         }
-      }
-
-    });
-
-    if (!result.length) {
-      result = null;
-    }
-    return result;
-  }
+        return result;
+    };
 })(jQuery);
+
 /**
  * $.parseParams - parse query string paramaters into an object. Reverse of jQuery.param
  * gist.github.com/kares/956897
