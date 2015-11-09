@@ -34,6 +34,9 @@ article {
   margin: 10px 0;
   border: 1px solid #dadada;
   box-shadow: 4px 2px 6px #f1f2f1;
+  &.lazy {
+    background: #00BCD4;
+  }
 
   .item-header {
     font-size: 1.15em;
@@ -44,9 +47,20 @@ article {
   }
 }
 
+.load-more {
+  display: inline-block;
+  width: 150px;
+  line-height: 35px;
+  border: 2px solid #dadada;
+  background: none;
+  text-decoration: none;
+  color: #FF5722;
+}
+
 .pagination {
   margin: 0;
   padding: 0;
+
 
   li {
     display: inline-block;

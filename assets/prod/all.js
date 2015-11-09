@@ -4,6 +4,8 @@
       pagination: '.pagination-container .pagination a',
       lazyLoad: '.load-more',
       lazyContainer: '.pagination-container',
+      lazyDynamic: false,
+      lazyDynamicTimeout: 3000,
       special_params: {
         isAjax: true
       },
@@ -29,6 +31,8 @@
     self.pagination = options.pagination;
     self.lazyLoad = options.lazyLoad;
     self.lazyContainer = options.lazyContainer;
+    self.lazyDynamic = options.lazyDynamic;
+    self.lazyDynamicTimeout = options.lazyDynamicTimeout;
     self.url = '';
     self.query = options.query;
     self.params = options.params;
@@ -39,23 +43,12 @@
     self.callbacks = options.callbacks;
 
     // events on pagination
-    self.eventHandle();
+    self.eventHandle(true);
 
     // if query was set, preload page via ajax
     if (self.query) {
       self.ajaxLoad(self.container);
     }
-
-    // EVENT: state changed. Run at forward\backward action
-    var popstate = function(e) {
-      self.query = location.pathname;
-      self.params = $.parseParams(location.search.split('?')[1] || '');
-      // load page content
-      self.ajaxLoad(self.container);
-    };
-
-    window.removeEventListener('popstate', popstate, false);
-    window.addEventListener('popstate', popstate, false);
 
     //cacheControl
     setInterval(function() {
@@ -68,6 +61,8 @@
     pagination: '',
     lazyLoad: null,
     lazyContainer: null,
+    lazyDynamic: false,
+    lazyDynamicTimeout: 500,
     query: '',
     params: {},
     special_params: {},
@@ -85,8 +80,46 @@
   };
 
   // pagination events
-  Paginator.prototype.eventHandle = function() {
+  Paginator.prototype.eventHandle = function(global) {
     var self = this;
+    // global events
+    if (global) {
+      // popstate changed. Run at forward\backward action
+      window.removeEventListener('popstate', _popstate, false);
+      window.addEventListener('popstate', _popstate, false);
+
+      // on page scroll. if lazyDynamic true
+      if (self.lazyDynamic) {
+        window.addEventListener('scroll', _pageScroll, false);
+      }
+
+      function _popstate(e) {
+        self.query = location.pathname;
+        self.params = $.parseParams(location.search.split('?')[1] || '');
+        // load page content
+        self.ajaxLoad(self.container);
+      };
+
+      function _pageScroll() {
+        // set a timeout after which simulate a click on the lazyLoad button
+        clearTimeout($(self.lazyLoad).data('timeout'));
+        var timer = setTimeout(function() {
+          var anchor;
+          if ($(self.lazyLoad).css('display') === 'none') {
+            $(self.lazyLoad).css('display', 'inline-block');
+            anchor = $(self.lazyLoad).offset().top;
+            $(self.lazyLoad).css('display', 'none');
+          } else {
+            anchor = $(self.lazyLoad).offset().top;
+          }
+
+          if ( $(document).scrollTop() + $(window).height() > anchor ) {
+            $(self.lazyLoad).trigger('click');
+          }
+        }, self.lazyDynamicTimeout);
+        $(self.lazyLoad).data('timeout', timer);
+      }
+    }
     // pagination keys
     if (self.pagination) {
       $(self.pagination).on('click', function(e) {
