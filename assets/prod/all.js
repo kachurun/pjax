@@ -171,7 +171,7 @@
       // update events
       self.eventHandle();
       // afterLoad callback
-      self.callback('afterLoad', self);
+      self.callback('afterLoad', $.extend({}, self));
       return;
     }
 
@@ -202,16 +202,16 @@
           } else {
             // insert instead container
             $(container).replaceWith(data);
-
-            // lazy flag off
-            self.isLazy = false;
           }
 
           // update events
           self.eventHandle();
 
           // afterLoad callback
-          self.callback('afterLoad', self);
+          self.callback('afterLoad', $.extend({},self));
+
+          // lazy flag off
+          self.isLazy = false;
         } else {
           // onError callback
           self.callback('onError', {status: 'empty-response', statusText: 'Empty Response from server'});
