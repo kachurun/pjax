@@ -162,7 +162,7 @@
   Paginator.prototype.ajaxLoad = function(container, nohistory) {
     var self = this;
     var history = !nohistory;
-    var params = $.extend(self.params, self.special_params);
+    var params = $.extend({}, self.params, self.special_params);
     var cache_id = self.query+'_'+$.param(params);
     var cache_index = $.findByKey(self.cache.items, {id: cache_id});
 
@@ -241,7 +241,7 @@
   Paginator.prototype.historyAdd = function() {
     var self = this;
     //html5 history api
-    history.pushState(null, null, self.url);
+    history.pushState(null, null, self.query+'?'+$.param(self.params));
     // lazy flag off
     self.isLazy = false;
   }
