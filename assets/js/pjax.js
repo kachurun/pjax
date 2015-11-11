@@ -66,34 +66,39 @@
 
       // on page scroll. if lazyDynamic true
       if (self.lazyDynamic) {
+        window.removeEventListener('scroll', _pageScroll, false);
         window.addEventListener('scroll', _pageScroll, false);
       }
 
       function _popstate(e) {
+        self.url = location.pathname + location.search;
         self.query = location.pathname;
         self.params = $.parseParams(location.search.split('?')[1] || '');
+
         // load page content
-        self.ajaxLoad(self.container);
+        self.ajaxLoad(self.container, true);
       };
 
       function _pageScroll() {
+        var $lazyLoad = $(self.lazyLoad);
+        if ($lazyLoad.length === 0) return false;
         // set a timeout after which simulate a click on the lazyLoad button
-        clearTimeout($(self.lazyLoad).data('timeout'));
+        clearTimeout($lazyLoad.data('timeout'));
         var timer = setTimeout(function() {
           var anchor;
-          if ($(self.lazyLoad).css('display') === 'none') {
-            $(self.lazyLoad).css('display', 'inline-block');
-            anchor = $(self.lazyLoad).offset().top;
-            $(self.lazyLoad).css('display', 'none');
+          if ($lazyLoad.css('display') === 'none') {
+            $lazyLoad.css('display', 'inline-block');
+            anchor = $lazyLoad.offset().top;
+            $lazyLoad.css('display', 'none');
           } else {
-            anchor = $(self.lazyLoad).offset().top;
+            anchor = $lazyLoad.offset().top;
           }
 
           if ( $(document).scrollTop() + $(window).height() > anchor ) {
-            $(self.lazyLoad).trigger('click');
+            $lazyLoad.trigger('click');
           }
         }, self.lazyDynamicTimeout);
-        $(self.lazyLoad).data('timeout', timer);
+        $lazyLoad.data('timeout', timer);
       }
     }
     // pagination keys
@@ -130,8 +135,9 @@
   };
 
   // load page via ajax
-  Paginator.prototype.ajaxLoad = function(container) {
+  Paginator.prototype.ajaxLoad = function(container, nohistory) {
     var self = this;
+    var history = !nohistory;
     var params = $.extend(self.params, self.special_params);
     var cache_id = self.query+'_'+$.param(params);
     var cache_index = $.findByKey(self.cache.items, {id: cache_id});
@@ -140,12 +146,22 @@
     self.callback('beforeLoad', self);
 
     // find it in cache first and load
-    if (self.cache.enabled && cache_index && ! self.isLazy) {
+    if (self.cache.enabled && cache_index) {
       self.fromCache = true;
-      // insert into container
-      $(self.container).html(self.cache.items[cache_index].data);
+      // insert into or replace with container
+      if (self.isLazy) {
+        // insert instead container
+        $(container).replaceWith(self.cache.items[cache_index].data);
+      } else {
+        // insert into container
+        $(container).html(self.cache.items[cache_index].data);
+      }
       // update events
       self.eventHandle();
+
+      // set history
+      if (history) self.historyAdd();
+
       // afterLoad callback
       self.callback('afterLoad', $.extend({}, self));
       return;
@@ -160,7 +176,7 @@
       .done(function(data) {
         if (data) {
           self.fromCache = false;
-          //cache element
+          // add to cache element
           if (self.cache.enabled) {
             self.cache.items.push({
               create: Math.floor(new Date().getTime() / 1000),
@@ -169,25 +185,22 @@
             });
           }
 
-          if (! self.isLazy) {
-            // insert into container
-            $(container).html(data);
-
-            // history api: set path
-            history.pushState(null, null, self.url);
-          } else {
+          if (self.isLazy) {
             // insert instead container
             $(container).replaceWith(data);
+          } else {
+            // insert into container
+            $(container).html(data);
           }
 
           // update events
           self.eventHandle();
 
+          // set history
+          if (history) self.historyAdd();
+
           // afterLoad callback
           self.callback('afterLoad', $.extend({},self));
-
-          // lazy flag off
-          self.isLazy = false;
         } else {
           // onError callback
           self.callback('onError', {status: 'empty-response', statusText: 'Empty Response from server'});
@@ -199,6 +212,15 @@
       });
 
   };
+
+  // history add
+  Paginator.prototype.historyAdd = function() {
+    var self = this;
+    //html5 history api
+    history.pushState(null, null, self.url);
+    // lazy flag off
+    self.isLazy = false;
+  }
 
   // remove old cache
   Paginator.prototype.cacheControl = function() {
@@ -309,6 +331,10 @@
   $.parseParams = function(query) {
     var params = {},
       e;
+    if (typeof query === 'string') {
+      query = query.replace('amp;','').replace('amp%3B','').replace('&%3B','&');
+    }
+
     while (e = re.exec(query)) {
       var k = decode(e[1]),
         v = decode(e[2]);

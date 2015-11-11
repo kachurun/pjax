@@ -11,10 +11,10 @@
       },
       callbacks: {
         afterLoad: function(obj){
-          console.log(obj);
+          // console.log(obj);
         },
         onError: function(err){
-          console.log(err);
+          // console.log(err);
         }
       }
     });
