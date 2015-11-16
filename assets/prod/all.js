@@ -11,7 +11,7 @@
       },
       callbacks: {
         afterLoad: function(obj){
-          // console.log(obj);
+          console.log(obj);
         },
         onError: function(err){
           // console.log(err);
@@ -183,11 +183,11 @@
       // update events
       self.eventHandle();
 
-      // set history
-      if (history) self.historyAdd();
-
       // afterLoad callback
       self.callback('afterLoad', $.extend({}, self));
+
+      // set history
+      if (history) self.historyAdd();
       return;
     }
 
@@ -220,11 +220,11 @@
           // update events
           self.eventHandle();
 
-          // set history
-          if (history) self.historyAdd();
-
           // afterLoad callback
           self.callback('afterLoad', $.extend({},self));
+
+          // set history
+          if (history) self.historyAdd();
         } else {
           // onError callback
           self.callback('onError', {status: 'empty-response', statusText: 'Empty Response from server'});
@@ -244,7 +244,7 @@
     history.pushState(null, null, self.query+'?'+$.param(self.params));
     // lazy flag off
     self.isLazy = false;
-  }
+  };
 
   // remove old cache
   Paginator.prototype.cacheControl = function() {
