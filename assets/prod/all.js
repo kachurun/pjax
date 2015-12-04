@@ -41,6 +41,7 @@
     self.cache = options.cache;
     self.fromCache = false;
     self.callbacks = options.callbacks;
+    self.pageLoad = false; // fix safari bug with popstate fire on page load
 
     // events on pagination
     self.eventHandle(true);
@@ -100,8 +101,10 @@
         self.params = $.parseParams(location.search.split('?')[1] || '');
 
         // load page content
-        self.ajaxLoad(self.container, true);
-      };
+        if (self.pageLoad) {
+          self.ajaxLoad(self.container, true);
+        }
+      }
 
       function _pageScroll() {
         var $lazyLoad = $(self.lazyLoad);
@@ -165,6 +168,8 @@
     var params = $.extend({}, self.params, self.special_params);
     var cache_id = self.query+'_'+$.param(params);
     var cache_index = $.findByKey(self.cache.items, {id: cache_id});
+
+    self.pageLoad = true;
 
     // beforeLoad callback
     self.callback('beforeLoad', self);
