@@ -1,29 +1,31 @@
 (function($) {
-
     var Paginator = function(container, options) {
         var self = this;
 
         self.container = container;
-        self.pagination = options.pagination;
-        self.lazyLoad = options.lazyLoad;
-        self.lazyContainer = options.lazyContainer;
-        self.lazyDynamic = options.lazyDynamic;
-        self.lazyDynamicTimeout = options.lazyDynamicTimeout;
         self.url = '';
-        self.query = options.query;
-        self.params = options.params;
-        self.special_params = options.special_params;
-        self.method = options.method;
-        self.cache = options.cache;
+
+        self.o = {};
+        self.o.pagination = options.pagination;
+        self.o.lazyLoad = options.lazyLoad;
+        self.o.lazyContainer = options.lazyContainer;
+        self.o.lazyDynamic = options.lazyDynamic;
+        self.o.lazyDynamicTimeout = options.lazyDynamicTimeout;
+        self.o.query = options.query;
+        self.o.params = options.params;
+        self.o.special_params = options.special_params;
+        self.o.method = options.method;
+        self.o.cache = options.cache || {};
+        self.o.callbacks = options.callbacks;
+
         self.fromCache = false;
-        self.callbacks = options.callbacks;
         self.pageLoad = false; // fix safari bug with popstate fire on page load
 
         // events on pagination
         self.eventHandle(true);
 
         // if query was set, preload page via ajax
-        if (self.query) {
+        if (self.o.query) {
             self.ajaxLoad(self.container);
         }
 
@@ -59,7 +61,7 @@
     // pagination events
     Paginator.prototype.eventHandle = function(global) {
         var self = this;
-        
+
         // global events
         if (global) {
             // popstate changed. Run at forward\backward action
@@ -67,48 +69,52 @@
             window.addEventListener('popstate', _popstate, false);
 
             // on page scroll. if lazyDynamic true
-            if (self.lazyDynamic) {
+            if (self.o.lazyDynamic) {
                 window.removeEventListener('scroll', _pageScroll, false);
                 window.addEventListener('scroll', _pageScroll, false);
             }
         }
-        
+
         // pagination keys
-        if (self.pagination) {
-            $(self.pagination).on('click', function(e) {
+        if (self.o.pagination) {
+            $(self.o.pagination).on('click', function(e) {
                 e.preventDefault();
 
                 // set query and params for request
                 self.url = $(this).attr('href');
-                self.query = _parseUrl(self.url)[0];
-                self.params = _parseUrl(self.url)[1];
+                self.o.query = _parseUrl(self.url)[0];
+                self.o.params = _parseUrl(self.url)[1];
 
                 // ajax page load
                 self.ajaxLoad(self.container);
             });
         }
-        
+
         // paginations lazy load button
-        if (self.lazyLoad && self.lazyContainer) {
-            $(self.lazyLoad).on('click', function(e) {
+        if (self.o.lazyLoad && self.o.lazyContainer) {
+            $(self.o.lazyLoad).on('click', function(e) {
                 e.preventDefault();
+                // prevent lazyload on timeout after click
+                clearTimeout($(self.o.lazyLoad).data('timeout'));
 
                 // set query and params for request
                 self.url = $(this).attr('href');
-                self.query = _parseUrl(self.url)[0];
-                self.params = _parseUrl(self.url)[1];
+                if (!self.url) return;
+
+                self.o.query = _parseUrl(self.url)[0];
+                self.o.params = _parseUrl(self.url)[1];
 
                 // ajax page load.
                 // lazy flag on
                 self.isLazy = true;
-                self.ajaxLoad(self.lazyContainer);
+                self.ajaxLoad(self.o.lazyContainer);
             });
         }
 
         function _popstate(e) {
             self.url = location.pathname + location.search;
-            self.query = location.pathname;
-            self.params = $.parseParams(location.search.split('?')[1] || '');
+            self.o.query = location.pathname;
+            self.o.params = $.parseParams(location.search.split('?')[1] || '');
 
             // load page content
             if (self.pageLoad) {
@@ -117,8 +123,9 @@
         }
 
         function _pageScroll() {
-            var $lazyLoad = $(self.lazyLoad);
-            if ($lazyLoad.length === 0) return false;
+            var $lazyLoad = $(self.o.lazyLoad);
+            if (!$lazyLoad[0]) return false;
+
             // set a timeout after which simulate a click on the lazyLoad button
             clearTimeout($lazyLoad.data('timeout'));
             var timer = setTimeout(function() {
@@ -134,7 +141,7 @@
                 if ($(document).scrollTop() + $(window).height() > anchor) {
                     $lazyLoad.trigger('click');
                 }
-            }, self.lazyDynamicTimeout);
+            }, self.o.lazyDynamicTimeout);
             $lazyLoad.data('timeout', timer);
         }
     };
@@ -142,28 +149,33 @@
     // load page via ajax
     Paginator.prototype.ajaxLoad = function(container, nohistory) {
         var self = this;
+        // prevent many requests
+        if (self.inLoading) return;
+
         var history = !nohistory;
-        var params = $.extend({}, self.params, self.special_params);
-        var cache_id = self.query + '_' + $.param(params);
-        var cache_index = $.findByKey(self.cache.items, {
+        var params = $.extend({}, self.o.params, self.o.special_params);
+        var cache_id = self.o.query + '_' + $.param(params);
+        var cache_index = $.findByKey(self.o.cache.items, {
             id: cache_id
         });
 
+        // page loaded (safari bug fix)
         self.pageLoad = true;
+        self.inLoading = true;
 
         // beforeLoad callback
         self.callback('beforeLoad', self);
 
         // find it in cache first and load
-        if (self.cache.enabled && cache_index) {
+        if (self.o.cache.enabled && cache_index) {
             self.fromCache = true;
             // insert into or replace with container
             if (self.isLazy) {
                 // insert instead container
-                $(container).replaceWith(self.cache.items[cache_index].data);
+                $(container).replaceWith(self.o.cache.items[cache_index].data);
             } else {
                 // insert into container
-                $(container).html(self.cache.items[cache_index].data);
+                $(container).html(self.o.cache.items[cache_index].data);
             }
             // update events
             self.eventHandle();
@@ -173,63 +185,97 @@
 
             // set history
             if (history) self.historyAdd();
+
+            self.inLoading = false;
             return;
         }
 
+        // MOCK
+        // setTimeout(function () {
+        //     var data = [
+        //                 '<div class="pagination-container">',
+        //                     '<a href="/ajax/page2.html?page=2" class="button load-more">More...</a>',
+        //                 '</div>'];
+        //
+        //     for (var i = 0, len = 2; i < len; i++) {
+        //         data.unshift(['<div class="item">',
+        //             '<div class="item-header">Item header ', i ,' </div>',
+        //             '<div class="item-content">Item content</div>',
+        //         '</div>'].join(''));
+        //     }
+        //     data = data.join('');
+        //
+        //     if (self.isLazy) {
+        //         // insert instead container
+        //         $(container).replaceWith(data);
+        //     } else {
+        //         // insert into container
+        //         $(container).html(data);
+        //     }
+        //
+        //     // update events
+        //     self.eventHandle();
+        //
+        //     self.inLoading = false;
+        // }, 300);
+        // return;
+
         $.ajax({
-                method: self.method,
-                url: self.query,
-                data: params,
-                dataType: 'html',
-            })
-            .done(function(data) {
-                if (data) {
-                    self.fromCache = false;
-                    // add to cache element
-                    if (self.cache.enabled) {
-                        self.cache.items.push({
-                            create: Math.floor(new Date().getTime() / 1000),
-                            id: cache_id,
-                            data: data
-                        });
-                    }
-
-                    if (self.isLazy) {
-                        // insert instead container
-                        $(container).replaceWith(data);
-                    } else {
-                        // insert into container
-                        $(container).html(data);
-                    }
-
-                    // update events
-                    self.eventHandle();
-
-                    // afterLoad callback
-                    self.callback('afterLoad', $.extend({}, self));
-
-                    // set history
-                    if (history) self.historyAdd();
-                } else {
-                    // onError callback
-                    self.callback('onError', {
-                        status: 'empty-response',
-                        statusText: 'Empty Response from server'
+            method: self.o.method,
+            url: self.o.query,
+            data: params,
+            dataType: 'html',
+        })
+        .done(function(data) {
+            if (data) {
+                self.fromCache = false;
+                // add to cache element
+                if (self.o.cache.enabled) {
+                    self.o.cache.items.push({
+                        create: Math.floor(new Date().getTime() / 1000),
+                        id: cache_id,
+                        data: data
                     });
                 }
-            })
-            .fail(function(error) {
-                // onError callback
-                self.callback('onError', error);
-            });
 
+                if (self.isLazy) {
+                    // insert instead container
+                    $(container).replaceWith(data);
+                } else {
+                    // insert into container
+                    $(container).html(data);
+                }
+
+                // update events
+                self.eventHandle();
+
+                // afterLoad callback
+                self.callback('afterLoad', $.extend({}, self));
+
+                // set history
+                if (history) self.historyAdd();
+            } else {
+                // onError callback
+                self.callback('onError', {
+                    status: 'empty-response',
+                    statusText: 'Empty Response from server'
+                });
+            }
+            self.inLoading = false;
+        })
+        .fail(function(error) {
+            // onError callback
+            self.callback('onError', error);
+
+            self.inLoading = false;
+        });
     };
 
     // history add
     Paginator.prototype.historyAdd = function() {
         var self = this;
         //html5 history api
-        history.pushState(null, null, self.query + '?' + $.param(self.params));
+        history.pushState(null, null, self.o.query + '?' + $.param(self.o.params));
         // lazy flag off
         self.isLazy = false;
     };
@@ -239,9 +285,9 @@
         var self = this,
             now = Math.floor(new Date().getTime() / 1000);
 
-        for (var i in self.cache.items) {
-            if (now > self.cache.items[i].create + self.cache.tll) {
-                self.cache.items.splice(i, 1);
+        for (var i in self.o.cache.items) {
+            if (now > self.o.cache.items[i].create + self.o.cache.tll) {
+                self.o.cache.items.splice(i, 1);
             }
         }
     };
@@ -264,13 +310,15 @@
     // callback
     Paginator.prototype.callback = function(name, data) {
         var self = this;
-        if (typeof self.callbacks[name] == 'function')
-            self.callbacks[name](data);
+        if (typeof self.o.callbacks[name] == 'function')
+            self.o.callbacks[name](data);
     };
 
     // return parsed url, e.g http://mysite.com/?p1=value1&p2=value2
     // returned ['http://mysite.com/', {p1:value1, p2:value2}]
     function _parseUrl(url) {
+        if (!url) return;
+
         var result = [];
         result.push(url.split('?')[0] || url);
         result.push($.parseParams(url.split('?')[1] || ''));
@@ -283,7 +331,7 @@
             var $this = $(this),
                 data = $this.data('pjax');
             if (!data) {
-                var settings = $.extend({}, Paginator.default, $this.data(), typeof options == 'object' && options);
+                var settings = $.extend(true, {}, Paginator.default, $this.data(), typeof options == 'object' && options);
                 $this.data('pjax', new Paginator($this, settings));
             } else {
                 if (typeof data[options] === 'function') {
