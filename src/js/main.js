@@ -1,11 +1,11 @@
 (function() {
     $(function() {
-        $('#container').pjax({
+        let paginator = $('#container').pjax({
             pagination: '.pagination-container .pagination a',
             lazyLoad: '.load-more',
             lazyContainer: '.pagination-container',
-            lazyDynamic: true,
-            lazyDynamicTimeout: 5000,
+            lazyDynamic: false,
+            lazyDynamicTimeout: 500,
             special_params: {
                 isAjax: true
             },
@@ -13,10 +13,10 @@
                 enabled: false
             },
             callbacks: {
-                afterLoad: function(obj) {
-                    console.log(obj);
+                afterLoad: function() {
+                    paginator.setParams({ 'lazyDynamic': true });
                 },
-                onError: function(err) {
+                onError: function() {
                     // console.log(err);
                 }
             }

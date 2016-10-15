@@ -1,203 +1,180 @@
 (function($) {
-    var Paginator = function(container, options) {
-        var self = this;
+    let Paginator = function(container, options) {
+        this.container = container;
+        this.url = '';
 
-        self.container = container;
-        self.url = '';
+        this.o = {};
+        this.o.pagination = options.pagination;
+        this.o.lazyLoad = options.lazyLoad;
+        this.o.lazyContainer = options.lazyContainer;
+        this.o.lazyDynamic = options.lazyDynamic;
+        this.o.lazyDynamicTimeout = options.lazyDynamicTimeout;
+        this.o.query = options.query;
+        this.o.params = options.params;
+        this.o.specialParams = options.specialParams;
+        this.o.method = options.method;
+        this.o.cache = options.cache || {};
+        this.o.callbacks = options.callbacks;
 
-        self.o = {};
-        self.o.pagination = options.pagination;
-        self.o.lazyLoad = options.lazyLoad;
-        self.o.lazyContainer = options.lazyContainer;
-        self.o.lazyDynamic = options.lazyDynamic;
-        self.o.lazyDynamicTimeout = options.lazyDynamicTimeout;
-        self.o.query = options.query;
-        self.o.params = options.params;
-        self.o.special_params = options.special_params;
-        self.o.method = options.method;
-        self.o.cache = options.cache || {};
-        self.o.callbacks = options.callbacks;
+        this.fromCache = false;
+        this.pageLoad = false; // key for fix safari bug with popstate fire on page load
 
-        self.fromCache = false;
-        self.pageLoad = false; // fix safari bug with popstate fire on page load
+        this.init();
+    };
 
+    // init function
+    Paginator.prototype.init = function(reinit) {
         // events on pagination
-        self.eventHandle(true);
+        this.eventHandle(true);
 
         // if query was set, preload page via ajax
-        if (self.o.query) {
-            self.ajaxLoad(self.container);
+        if (this.o.query) {
+            this.ajaxLoad(this.container);
         }
 
         //cacheControl
-        setInterval(function() {
-            self.cacheControl();
+        setInterval(() => {
+            this.cacheControl();
         }, 1000);
     };
 
-    // default settings
-    Paginator.default = {
-        pagination: '',
-        lazyLoad: null,
-        lazyContainer: null,
-        lazyDynamic: false,
-        lazyDynamicTimeout: 500,
-        query: '',
-        params: {},
-        special_params: {},
-        method: 'GET',
-        cache: {
-            enabled: true,
-            tll: 60,
-            items: []
-        },
-        callbacks: {
-            beforeLoad: null,
-            afterLoad: null,
-            onError: null
-        }
-    };
-
     // pagination events
-    Paginator.prototype.eventHandle = function(global) {
-        var self = this;
-
+    Paginator.prototype.eventHandle = function(gl) {
         // global events
-        if (global) {
+        if (gl) {
             // popstate changed. Run at forward\backward action
-            window.removeEventListener('popstate', _popstate, false);
-            window.addEventListener('popstate', _popstate, false);
+            $(window).off('popstate.pjax').on('popstate.pjax', () => {
+                this.url = location.pathname + location.search;
+                this.o.query = location.pathname;
+                this.o.params = $.parseParams(location.search.split('?')[1] || '');
+
+                // load page content
+                if (this.pageLoad) {
+                    this.ajaxLoad(this.container, true);
+                }
+            });
 
             // on page scroll. if lazyDynamic true
-            if (self.o.lazyDynamic) {
-                window.removeEventListener('scroll', _pageScroll, false);
-                window.addEventListener('scroll', _pageScroll, false);
+            if (this.o.lazyDynamic) {
+                $(window).off('scroll.pjax').on('scroll.pjax', () => {
+                    let $lazyLoad = $(this.o.lazyLoad);
+                    if (!$lazyLoad[0]) return false;
+
+                    // set a timeout after which simulate a click on the lazyLoad button
+                    clearTimeout($lazyLoad.data('timeout'));
+                    let timer = setTimeout(function() {
+                        let anchor;
+                        if ($lazyLoad.css('display') === 'none') {
+                            $lazyLoad.css('display', 'inline-block');
+                            anchor = $lazyLoad.offset().top;
+                            $lazyLoad.css('display', 'none');
+                        } else {
+                            anchor = $lazyLoad.offset().top;
+                        }
+
+                        if ($(document).scrollTop() + $(window).height() > anchor) {
+                            $lazyLoad.trigger('click');
+                        }
+                    }, this.o.lazyDynamicTimeout);
+                    $lazyLoad.data('timeout', timer);
+                });
+                // trigger scroll event on page load
+                $(window).trigger('scroll.pjax');
             }
         }
 
         // pagination keys
-        if (self.o.pagination) {
-            $(self.o.pagination).on('click', function(e) {
+        if (this.o.pagination) {
+            $(this.o.pagination).on('click', e => {
                 e.preventDefault();
 
                 // set query and params for request
-                self.url = $(this).attr('href');
-                self.o.query = _parseUrl(self.url)[0];
-                self.o.params = _parseUrl(self.url)[1];
+                this.url = $(e.currentTarget).attr('href');
+                let paramsData = _parseUrl(this.url);
+                if (paramsData) {
+                    this.o.query = paramsData[0];
+                    this.o.params = paramsData[1];
+                }
 
                 // ajax page load
-                self.ajaxLoad(self.container);
+                this.ajaxLoad(this.container);
             });
         }
 
         // paginations lazy load button
-        if (self.o.lazyLoad && self.o.lazyContainer) {
-            $(self.o.lazyLoad).on('click', function(e) {
+        if (this.o.lazyLoad && this.o.lazyContainer) {
+            $(this.o.lazyLoad).on('click', e => {
                 e.preventDefault();
                 // prevent lazyload on timeout after click
-                clearTimeout($(self.o.lazyLoad).data('timeout'));
+                clearTimeout($(this.o.lazyLoad).data('timeout'));
 
                 // set query and params for request
-                self.url = $(this).attr('href');
-                if (!self.url) return;
+                this.url = $(e.currentTarget).attr('href');
+                if (!this.url) return;
 
-                self.o.query = _parseUrl(self.url)[0];
-                self.o.params = _parseUrl(self.url)[1];
+                this.o.query = _parseUrl(this.url)[0];
+                this.o.params = _parseUrl(this.url)[1];
 
                 // ajax page load.
                 // lazy flag on
-                self.isLazy = true;
-                self.ajaxLoad(self.o.lazyContainer);
+                this.isLazy = true;
+                this.ajaxLoad(this.o.lazyContainer);
             });
-        }
-
-        function _popstate(e) {
-            self.url = location.pathname + location.search;
-            self.o.query = location.pathname;
-            self.o.params = $.parseParams(location.search.split('?')[1] || '');
-
-            // load page content
-            if (self.pageLoad) {
-                self.ajaxLoad(self.container, true);
-            }
-        }
-
-        function _pageScroll() {
-            var $lazyLoad = $(self.o.lazyLoad);
-            if (!$lazyLoad[0]) return false;
-
-            // set a timeout after which simulate a click on the lazyLoad button
-            clearTimeout($lazyLoad.data('timeout'));
-            var timer = setTimeout(function() {
-                var anchor;
-                if ($lazyLoad.css('display') === 'none') {
-                    $lazyLoad.css('display', 'inline-block');
-                    anchor = $lazyLoad.offset().top;
-                    $lazyLoad.css('display', 'none');
-                } else {
-                    anchor = $lazyLoad.offset().top;
-                }
-
-                if ($(document).scrollTop() + $(window).height() > anchor) {
-                    $lazyLoad.trigger('click');
-                }
-            }, self.o.lazyDynamicTimeout);
-            $lazyLoad.data('timeout', timer);
         }
     };
 
     // load page via ajax
     Paginator.prototype.ajaxLoad = function(container, nohistory) {
-        var self = this;
         // prevent many requests
-        if (self.inLoading) return;
+        if (this.inLoading) return;
 
-        var history = !nohistory;
-        var params = $.extend({}, self.o.params, self.o.special_params);
-        var cache_id = self.o.query + '_' + $.param(params);
-        var cache_index = $.findByKey(self.o.cache.items, {
+        let history = !nohistory;
+        let params = $.extend({}, this.o.params, this.o.special_params);
+        let cache_id = this.o.query + '_' + $.param(params);
+        let cache_index = $.findByKey(this.o.cache.items, {
             id: cache_id
         });
 
         // page loaded (safari bug fix)
-        self.pageLoad = true;
-        self.inLoading = true;
+        this.pageLoad = true;
+        this.inLoading = true;
 
         // beforeLoad callback
-        self.callback('beforeLoad', self);
+        this.callback('beforeLoad', this);
 
         // find it in cache first and load
-        if (self.o.cache.enabled && cache_index) {
-            self.fromCache = true;
+        if (this.o.cache.enabled && cache_index) {
+            this.fromCache = true;
             // insert into or replace with container
-            if (self.isLazy) {
+            if (this.isLazy) {
                 // insert instead container
-                $(container).replaceWith(self.o.cache.items[cache_index].data);
-            } else {
+                $(container).replaceWith(this.o.cache.items[cache_index].data);
+            }
+            else {
                 // insert into container
-                $(container).html(self.o.cache.items[cache_index].data);
+                $(container).html(this.o.cache.items[cache_index].data);
             }
             // update events
-            self.eventHandle();
+            this.eventHandle();
 
             // afterLoad callback
-            self.callback('afterLoad', $.extend({}, self));
+            this.callback('afterLoad', $.extend({}, this));
 
             // set history
-            if (history) self.historyAdd();
+            if (history) this.historyAdd();
 
-            self.inLoading = false;
+            this.inLoading = false;
             return;
         }
 
         // MOCK
         // setTimeout(function () {
-        //     var data = [
+        //     let data = [
         //                 '<div class="pagination-container">',
         //                     '<a href="/ajax/page2.html?page=2" class="button load-more">More...</a>',
         //                 '</div>'];
         //
-        //     for (var i = 0, len = 2; i < len; i++) {
+        //     for (let i = 0, len = 2; i < len; i++) {
         //         data.unshift(['<div class="item">',
         //             '<div class="item-header">Item header ', i ,' </div>',
         //             '<div class="item-content">Item content</div>',
@@ -205,7 +182,7 @@
         //     }
         //     data = data.join('');
         //
-        //     if (self.isLazy) {
+        //     if (this.isLazy) {
         //         // insert instead container
         //         $(container).replaceWith(data);
         //     } else {
@@ -214,31 +191,32 @@
         //     }
         //
         //     // update events
-        //     self.eventHandle();
+        //     this.eventHandle();
         //
-        //     self.inLoading = false;
+        //     this.inLoading = false;
         // }, 300);
         // return;
 
         $.ajax({
-            method: self.o.method,
-            url: self.o.query,
+            method: this.o.method,
+            url: this.o.query,
             data: params,
             dataType: 'html',
         })
-        .done(function(data) {
+
+        .done((data) => {
             if (data) {
-                self.fromCache = false;
+                this.fromCache = false;
                 // add to cache element
-                if (self.o.cache.enabled) {
-                    self.o.cache.items.push({
+                if (this.o.cache.enabled) {
+                    this.o.cache.items.push({
                         create: Math.floor(new Date().getTime() / 1000),
                         id: cache_id,
                         data: data
                     });
                 }
 
-                if (self.isLazy) {
+                if (this.isLazy) {
                     // insert instead container
                     $(container).replaceWith(data);
                 } else {
@@ -247,71 +225,60 @@
                 }
 
                 // update events
-                self.eventHandle();
+                this.eventHandle();
 
                 // afterLoad callback
-                self.callback('afterLoad', $.extend({}, self));
+                this.callback('afterLoad', $.extend({}, this));
 
                 // set history
-                if (history) self.historyAdd();
-            } else {
+                if (history) this.historyAdd();
+            }
+            else {
                 // onError callback
-                self.callback('onError', {
+                this.callback('onError', {
                     status: 'empty-response',
                     statusText: 'Empty Response from server'
                 });
             }
-            self.inLoading = false;
+            this.inLoading = false;
         })
-        .fail(function(error) {
-            // onError callback
-            self.callback('onError', error);
 
-            self.inLoading = false;
+        .fail((error) => {
+            // onError callback
+            this.callback('onError', error);
+
+            this.inLoading = false;
         });
     };
 
     // history add
     Paginator.prototype.historyAdd = function() {
-        var self = this;
         //html5 history api
-        history.pushState(null, null, self.o.query + '?' + $.param(self.o.params));
+        history.pushState(null, null, this.o.query + '?' + $.param(this.o.params));
         // lazy flag off
-        self.isLazy = false;
+        this.isLazy = false;
     };
 
     // remove old cache
     Paginator.prototype.cacheControl = function() {
-        var self = this,
-            now = Math.floor(new Date().getTime() / 1000);
+        let now = Math.floor(new Date().getTime() / 1000);
 
-        for (var i in self.o.cache.items) {
-            if (now > self.o.cache.items[i].create + self.o.cache.tll) {
-                self.o.cache.items.splice(i, 1);
+        this.o.cache.items.forEach((item, i) => {
+            if (now > item.create + this.o.cache.tll) {
+                this.o.cache.items.splice(i, 1);
             }
-        }
+        });
     };
 
     // setparams method
-    Paginator.prototype.setParams = function(options, autoload) {
-        var self = this;
-
-        if (typeof options == 'object') {
-            for (var i in options) {
-                if (i in self) {
-                    self[i] = options[i];
-                }
-            }
-            if (autoload)
-                self.ajaxLoad();
-        }
+    Paginator.prototype.setParams = function(options) {
+        this.o = $.extend({}, this.o, options);
+        this.init(true); //reinit
     };
 
     // callback
     Paginator.prototype.callback = function(name, data) {
-        var self = this;
-        if (typeof self.o.callbacks[name] == 'function')
-            self.o.callbacks[name](data);
+        if (typeof this.o.callbacks[name] == 'function') this.o.callbacks[name](data);
     };
 
     // return parsed url, e.g http://mysite.com/?p1=value1&p2=value2
@@ -319,26 +286,51 @@
     function _parseUrl(url) {
         if (!url) return;
 
-        var result = [];
+        let result = [];
         result.push(url.split('?')[0] || url);
         result.push($.parseParams(url.split('?')[1] || ''));
         return result;
     }
 
     $.fn.pjax = function(options) {
-        var args = Array.prototype.slice.call(arguments, 1);
-        return this.each(function() {
-            var $this = $(this),
-                data = $this.data('pjax');
-            if (!data) {
-                var settings = $.extend(true, {}, Paginator.default, $this.data(), typeof options == 'object' && options);
-                $this.data('pjax', new Paginator($this, settings));
-            } else {
-                if (typeof data[options] === 'function') {
-                    data[options].apply(data, args);
-                }
+        const args = Array.prototype.slice.call(arguments, 1);
+        const defaults = {
+            pagination: '',
+            lazyLoad: null,
+            lazyContainer: null,
+            lazyDynamic: false,
+            lazyDynamicTimeout: 500,
+            query: '',
+            params: {},
+            specialParams: {},
+            method: 'GET',
+            cache: {
+                enabled: true,
+                tll: 60,
+                items: []
+            },
+            callbacks: {
+                beforeLoad: null,
+                afterLoad: null,
+                onError: null
             }
-        });
+        };
+
+        const $el = $(this).eq(0);
+        let paginator = $el.data('pjax');
+
+        if (!paginator) {
+            const settings = $.extend(true, {}, defaults, options);
+            paginator = new Paginator($el, settings);
+            $el.data('pjax', paginator);
+        }
+        else {
+            if (typeof paginator[options] === 'function') {
+                paginator[options].apply(paginator, args);
+            }
+        }
+
+        return paginator;
     };
 })(jQuery);
 
@@ -351,12 +343,12 @@
  */
 (function($) {
     $.findByKey = function(array, find) {
-        var result = [];
+        let result = [];
         array.forEach(function(object, index) {
-            for (var key in find) {
-                var value = find[key];
+            for (let key in find) {
+                let value = find[key];
                 key = key.split('.');
-                var temp = (JSON.parse(JSON.stringify(object)));
+                let temp = (JSON.parse(JSON.stringify(object)));
                 key.forEach(function(keyv, keyi) {
                     if (keyv in temp) {
                         temp = temp[keyv];
@@ -383,20 +375,20 @@
  * $.parseParams('example.com/?q=1&tyu=4'.split('?')[1] || '')
  */
 (function($) {
-    var re = /([^&=]+)=?([^&]*)/g;
-    var decodeRE = /\+/g; // Regex for replacing addition symbol with a space
-    var decode = function(str) {
+    let re = /([^&=]+)=?([^&]*)/g;
+    let decodeRE = /\+/g; // Regex for replacing addition symbol with a space
+    let decode = function(str) {
         return decodeURIComponent(str.replace(decodeRE, " "));
     };
     $.parseParams = function(query) {
-        var params = {},
+        let params = {},
             e;
         if (typeof query === 'string') {
             query = query.replace('amp;', '').replace('amp%3B', '').replace('&%3B', '&');
         }
 
         while (e = re.exec(query)) {
-            var k = decode(e[1]),
+            let k = decode(e[1]),
                 v = decode(e[2]);
             if (k.substring(k.length - 2) === '[]') {
                 k = k.substring(0, k.length - 2);
