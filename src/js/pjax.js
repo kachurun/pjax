@@ -9,6 +9,7 @@
         this.o.lazyContainer = options.lazyContainer;
         this.o.lazyDynamic = options.lazyDynamic;
         this.o.lazyDynamicTimeout = options.lazyDynamicTimeout;
+        this.o.lazyDynamicDelayedStart = options.lazyDynamicDelayedStart;
         this.o.query = options.query;
         this.o.params = options.params;
         this.o.specialParams = options.specialParams;
@@ -55,7 +56,7 @@
             });
 
             // on page scroll. if lazyDynamic true
-            if (this.o.lazyDynamic) {
+            if (this.o.lazyDynamic && !this.o.lazyDynamicDelayedStart) {
                 $(window).off('scroll.pjax').on('scroll.pjax', () => {
                     let $lazyLoad = $(this.o.lazyLoad);
                     if (!$lazyLoad[0]) return false;
@@ -85,7 +86,7 @@
 
         // pagination keys
         if (this.o.pagination) {
-            $(this.o.pagination).on('click', e => {
+            $(this.o.pagination).off('click.pjax').on('click.pjax', e => {
                 e.preventDefault();
 
                 // set query and params for request
@@ -103,7 +104,7 @@
 
         // paginations lazy load button
         if (this.o.lazyLoad && this.o.lazyContainer) {
-            $(this.o.lazyLoad).on('click', e => {
+            $(this.o.lazyLoad).off('click.pjax').on('click.pjax', e => {
                 e.preventDefault();
                 // prevent lazyload on timeout after click
                 clearTimeout($(this.o.lazyLoad).data('timeout'));
@@ -119,6 +120,11 @@
                 // lazy flag on
                 this.isLazy = true;
                 this.ajaxLoad(this.o.lazyContainer);
+
+                if (this.o.lazyDynamicDelayedStart) {
+                    this.o.lazyDynamicDelayedStart = false;
+                    this.eventHandle();
+                }
             });
         }
     };
@@ -301,6 +307,7 @@
             lazyContainer: null,
             lazyDynamic: false,
             lazyDynamicTimeout: 500,
+            lazyDynamicDelayedStart: false,
             query: '',
             params: {},
             specialParams: {},

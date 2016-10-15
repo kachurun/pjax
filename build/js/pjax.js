@@ -11,6 +11,7 @@
         this.o.lazyContainer = options.lazyContainer;
         this.o.lazyDynamic = options.lazyDynamic;
         this.o.lazyDynamicTimeout = options.lazyDynamicTimeout;
+        this.o.lazyDynamicDelayedStart = options.lazyDynamicDelayedStart;
         this.o.query = options.query;
         this.o.params = options.params;
         this.o.specialParams = options.specialParams;
@@ -61,7 +62,7 @@
             });
 
             // on page scroll. if lazyDynamic true
-            if (this.o.lazyDynamic) {
+            if (this.o.lazyDynamic && !this.o.lazyDynamicDelayedStart) {
                 $(window).off('scroll.pjax').on('scroll.pjax', function () {
                     var $lazyLoad = $(_this2.o.lazyLoad);
                     if (!$lazyLoad[0]) return false;
@@ -91,7 +92,7 @@
 
         // pagination keys
         if (this.o.pagination) {
-            $(this.o.pagination).on('click', function (e) {
+            $(this.o.pagination).off('click.pjax').on('click.pjax', function (e) {
                 e.preventDefault();
 
                 // set query and params for request
@@ -109,7 +110,7 @@
 
         // paginations lazy load button
         if (this.o.lazyLoad && this.o.lazyContainer) {
-            $(this.o.lazyLoad).on('click', function (e) {
+            $(this.o.lazyLoad).off('click.pjax').on('click.pjax', function (e) {
                 e.preventDefault();
                 // prevent lazyload on timeout after click
                 clearTimeout($(_this2.o.lazyLoad).data('timeout'));
@@ -125,6 +126,11 @@
                 // lazy flag on
                 _this2.isLazy = true;
                 _this2.ajaxLoad(_this2.o.lazyContainer);
+
+                if (_this2.o.lazyDynamicDelayedStart) {
+                    _this2.o.lazyDynamicDelayedStart = false;
+                    _this2.eventHandle();
+                }
             });
         }
     };
@@ -305,6 +311,7 @@
             lazyContainer: null,
             lazyDynamic: false,
             lazyDynamicTimeout: 500,
+            lazyDynamicDelayedStart: false,
             query: '',
             params: {},
             specialParams: {},
