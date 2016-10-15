@@ -1,0 +1,15 @@
+{
+    "esversion": 6,
+    "undef": true,
+    "unused": true,
+    "varstmt": true,
+    "strict": "implied",
+    "validthis":true,
+    "loopfunc": true,
+
+    "browser": true,
+    "node": true,
+    "jquery": true,
+    "devel": true,
+    "predef": [ "spaced", "spaced_cli", "alertify", "twig", "less", "riot", "require", "requirejs", "$document"]
+}

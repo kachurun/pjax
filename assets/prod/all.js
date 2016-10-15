@@ -1,5 +1,7 @@
-(function() {
-    $(function() {
+'use strict';
+
+(function () {
+    $(function () {
         $('#container').pjax({
             pagination: '.pagination-container .pagination a',
             lazyLoad: '.load-more',
@@ -13,19 +15,22 @@
                 enabled: false
             },
             callbacks: {
-                afterLoad: function(obj) {
+                afterLoad: function afterLoad(obj) {
                     console.log(obj);
                 },
-                onError: function(err) {
+                onError: function onError(err) {
                     // console.log(err);
                 }
             }
         });
     });
 })();
+'use strict';
 
-(function($) {
-    var Paginator = function(container, options) {
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
+
+(function ($) {
+    var Paginator = function Paginator(container, options) {
         var self = this;
 
         self.container = container;
@@ -56,7 +61,7 @@
         }
 
         //cacheControl
-        setInterval(function() {
+        setInterval(function () {
             self.cacheControl();
         }, 1000);
     };
@@ -85,7 +90,7 @@
     };
 
     // pagination events
-    Paginator.prototype.eventHandle = function(global) {
+    Paginator.prototype.eventHandle = function (global) {
         var self = this;
 
         // global events
@@ -103,7 +108,7 @@
 
         // pagination keys
         if (self.o.pagination) {
-            $(self.o.pagination).on('click', function(e) {
+            $(self.o.pagination).on('click', function (e) {
                 e.preventDefault();
 
                 // set query and params for request
@@ -118,7 +123,7 @@
 
         // paginations lazy load button
         if (self.o.lazyLoad && self.o.lazyContainer) {
-            $(self.o.lazyLoad).on('click', function(e) {
+            $(self.o.lazyLoad).on('click', function (e) {
                 e.preventDefault();
                 // prevent lazyload on timeout after click
                 clearTimeout($(self.o.lazyLoad).data('timeout'));
@@ -154,7 +159,7 @@
 
             // set a timeout after which simulate a click on the lazyLoad button
             clearTimeout($lazyLoad.data('timeout'));
-            var timer = setTimeout(function() {
+            var timer = setTimeout(function () {
                 var anchor;
                 if ($lazyLoad.css('display') === 'none') {
                     $lazyLoad.css('display', 'inline-block');
@@ -173,7 +178,7 @@
     };
 
     // load page via ajax
-    Paginator.prototype.ajaxLoad = function(container, nohistory) {
+    Paginator.prototype.ajaxLoad = function (container, nohistory) {
         var self = this;
         // prevent many requests
         if (self.inLoading) return;
@@ -250,9 +255,8 @@
             method: self.o.method,
             url: self.o.query,
             data: params,
-            dataType: 'html',
-        })
-        .done(function(data) {
+            dataType: 'html'
+        }).done(function (data) {
             if (data) {
                 self.fromCache = false;
                 // add to cache element
@@ -288,8 +292,7 @@
                 });
             }
             self.inLoading = false;
-        })
-        .fail(function(error) {
+        }).fail(function (error) {
             // onError callback
             self.callback('onError', error);
 
@@ -298,7 +301,7 @@
     };
 
     // history add
-    Paginator.prototype.historyAdd = function() {
+    Paginator.prototype.historyAdd = function () {
         var self = this;
         //html5 history api
         history.pushState(null, null, self.o.query + '?' + $.param(self.o.params));
@@ -307,7 +310,7 @@
     };
 
     // remove old cache
-    Paginator.prototype.cacheControl = function() {
+    Paginator.prototype.cacheControl = function () {
         var self = this,
             now = Math.floor(new Date().getTime() / 1000);
 
@@ -319,25 +322,23 @@
     };
 
     // setparams method
-    Paginator.prototype.setParams = function(options, autoload) {
+    Paginator.prototype.setParams = function (options, autoload) {
         var self = this;
 
-        if (typeof options == 'object') {
+        if ((typeof options === 'undefined' ? 'undefined' : _typeof(options)) == 'object') {
             for (var i in options) {
                 if (i in self) {
                     self[i] = options[i];
                 }
             }
-            if (autoload)
-                self.ajaxLoad();
+            if (autoload) self.ajaxLoad();
         }
     };
 
     // callback
-    Paginator.prototype.callback = function(name, data) {
+    Paginator.prototype.callback = function (name, data) {
         var self = this;
-        if (typeof self.o.callbacks[name] == 'function')
-            self.o.callbacks[name](data);
+        if (typeof self.o.callbacks[name] == 'function') self.o.callbacks[name](data);
     };
 
     // return parsed url, e.g http://mysite.com/?p1=value1&p2=value2
@@ -351,13 +352,13 @@
         return result;
     }
 
-    $.fn.pjax = function(options) {
+    $.fn.pjax = function (options) {
         var args = Array.prototype.slice.call(arguments, 1);
-        return this.each(function() {
+        return this.each(function () {
             var $this = $(this),
                 data = $this.data('pjax');
             if (!data) {
-                var settings = $.extend(true, {}, Paginator.default, $this.data(), typeof options == 'object' && options);
+                var settings = $.extend(true, {}, Paginator.default, $this.data(), (typeof options === 'undefined' ? 'undefined' : _typeof(options)) == 'object' && options);
                 $this.data('pjax', new Paginator($this, settings));
             } else {
                 if (typeof data[options] === 'function') {
@@ -368,22 +369,21 @@
     };
 })(jQuery);
 
-
 // -------------------------------------------------------------------------- common
 /*
  * Find By key
  * used for search object index in array of objects
  * See example at http://jsfiddle.net/kachurun/mgacd3at/
  */
-(function($) {
-    $.findByKey = function(array, find) {
+(function ($) {
+    $.findByKey = function (array, find) {
         var result = [];
-        array.forEach(function(object, index) {
+        array.forEach(function (object, index) {
             for (var key in find) {
                 var value = find[key];
                 key = key.split('.');
-                var temp = (JSON.parse(JSON.stringify(object)));
-                key.forEach(function(keyv, keyi) {
+                var temp = JSON.parse(JSON.stringify(object));
+                key.forEach(function (keyv, keyi) {
                     if (keyv in temp) {
                         temp = temp[keyv];
                         if (key.length - 1 === keyi && value == temp) {
@@ -392,7 +392,6 @@
                     }
                 });
             }
-
         });
         if (!result.length) {
             result = null;
@@ -408,13 +407,13 @@
  * $.parseParams('q=1&tyu=4')
  * $.parseParams('example.com/?q=1&tyu=4'.split('?')[1] || '')
  */
-(function($) {
+(function ($) {
     var re = /([^&=]+)=?([^&]*)/g;
     var decodeRE = /\+/g; // Regex for replacing addition symbol with a space
-    var decode = function(str) {
+    var decode = function decode(str) {
         return decodeURIComponent(str.replace(decodeRE, " "));
     };
-    $.parseParams = function(query) {
+    $.parseParams = function (query) {
         var params = {},
             e;
         if (typeof query === 'string') {
