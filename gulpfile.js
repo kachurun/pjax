@@ -1,11 +1,11 @@
 'use strict';
 
 let gulp = require('gulp');
-let concat = require('gulp-concat');
+// let concat = require('gulp-concat');
 let uglify = require('gulp-uglify');
 let babel = require("gulp-babel");
 
-let sass = require('gulp-sass');
+let less = require('gulp-less');
 let sourcemaps = require('gulp-sourcemaps');
 let minifyCss = require('gulp-minify-css');
 let concatCss = require('gulp-concat-css');
@@ -13,12 +13,12 @@ let inline_base64 = require('gulp-inline-base64');
 let autoprefixer = require('gulp-autoprefixer');
 
 // ----------------------------------------------------------------------------- VARIABLES
-let src_js = ['./assets/js/**/*.js'];
-let dir_js = './assets/prod';
+let src_js = ['./src/js/**/*.js'];
+let src_css = ['./src/less/styles.less'];
+let watch_css = './src/less/**/*.less';
 
-let src_css = ['./assets/scss/styles.scss'];
-let watch_css = './assets/scss/**/*.scss';
-let dir_css = './assets/prod';
+let dir_js = './build/js';
+let dir_css = './build/css';
 
 // ----------------------------------------------------------------------------- TASKS
 gulp.task('default', ['dev'], () => {
@@ -34,14 +34,12 @@ gulp.task('prod', ['js-prod', 'css-prod']);
 gulp.task('js-dev', () => {
     return gulp.src(src_js)
         .pipe(babel())
-        .pipe(concat('all.js'))
         .pipe(gulp.dest(dir_js));
 });
 
 gulp.task('js-prod', () => {
     return gulp.src(src_js)
         .pipe(babel())
-        .pipe(concat('all.js'))
         .pipe(uglify())
         .pipe(gulp.dest(dir_js));
 });
@@ -50,7 +48,7 @@ gulp.task('js-prod', () => {
 gulp.task('css-dev', () => {
     return gulp.src(src_css)
         .pipe(sourcemaps.init())
-        .pipe(sass().on('error', sass.logError))
+        .pipe(less().on('error', less.logError))
         .pipe(sourcemaps.write())
         .pipe(concatCss('style.css'))
         .pipe(gulp.dest(dir_css));
@@ -58,7 +56,7 @@ gulp.task('css-dev', () => {
 
 gulp.task('css-prod', () => {
     return gulp.src(src_css)
-        .pipe(sass().on('error', sass.logError))
+        .pipe(less().on('error', less.logError))
         .pipe(concatCss('style.css'))
         .pipe(inline_base64({
             baseDir: './assets/prod/',
