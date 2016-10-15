@@ -277,6 +277,7 @@
     // setparams method
     Paginator.prototype.setParams = function (options) {
         this.o = $.extend({}, this.o, options);
+        if (options && options.special_params) this.o.specialParams = options.special_params;
         this.init(true); //reinit
     };
 
@@ -325,6 +326,7 @@
 
         if (!paginator) {
             var settings = $.extend(true, {}, defaults, options);
+            if (options && options.special_params) settings.specialParams = options.special_params;
             paginator = new Paginator($el, settings);
             $el.data('pjax', paginator);
         } else {
