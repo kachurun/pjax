@@ -48,7 +48,7 @@ gulp.task('js-prod', () => {
 gulp.task('css-dev', () => {
     return gulp.src(src_css)
         .pipe(sourcemaps.init())
-        .pipe(less().on('error', less.logError))
+        .pipe(less().on('error', (e) => console.log(e) ))
         .pipe(sourcemaps.write())
         .pipe(concatCss('style.css'))
         .pipe(gulp.dest(dir_css));
@@ -56,7 +56,7 @@ gulp.task('css-dev', () => {
 
 gulp.task('css-prod', () => {
     return gulp.src(src_css)
-        .pipe(less().on('error', less.logError))
+        .pipe(less().on('error', (e) => console.log(e) ))
         .pipe(concatCss('style.css'))
         .pipe(inline_base64({
             baseDir: './assets/prod/',
