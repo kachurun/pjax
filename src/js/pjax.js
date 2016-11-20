@@ -135,7 +135,7 @@
         if (this.inLoading) return;
 
         let history = !nohistory;
-        let params = $.extend({}, this.o.params, this.o.special_params);
+        let params = $.extend({}, this.o.params, this.o.specialParams);
         let cache_id = this.o.query + '_' + $.param(params);
         let cache_index = $.findByKey(this.o.cache.items, {
             id: cache_id

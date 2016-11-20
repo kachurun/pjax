@@ -143,7 +143,7 @@
         if (this.inLoading) return;
 
         var history = !nohistory;
-        var params = $.extend({}, this.o.params, this.o.special_params);
+        var params = $.extend({}, this.o.params, this.o.specialParams);
         var cache_id = this.o.query + '_' + $.param(params);
         var cache_index = $.findByKey(this.o.cache.items, {
             id: cache_id
