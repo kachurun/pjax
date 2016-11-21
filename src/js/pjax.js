@@ -123,7 +123,7 @@
 
                 if (this.o.lazyDynamicDelayedStart) {
                     this.o.lazyDynamicDelayedStart = false;
-                    this.eventHandle();
+                    this.eventHandle(true);
                 }
             });
         }

@@ -129,7 +129,7 @@
 
                 if (_this2.o.lazyDynamicDelayedStart) {
                     _this2.o.lazyDynamicDelayedStart = false;
-                    _this2.eventHandle();
+                    _this2.eventHandle(true);
                 }
             });
         }
