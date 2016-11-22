@@ -8,6 +8,7 @@
             lazyDynamic: true,
             lazyDynamicDelayedStart: true,
             lazyDynamicTimeout: 500,
+            lazyDynamicOffset: -300,
             specialParams: {
                 is_ajax: true
             },

@@ -10,6 +10,7 @@
         this.o.lazyDynamic = options.lazyDynamic;
         this.o.lazyDynamicTimeout = options.lazyDynamicTimeout;
         this.o.lazyDynamicDelayedStart = options.lazyDynamicDelayedStart;
+        this.o.lazyDynamicOffset = options.lazyDynamicOffset;
         this.o.query = options.query;
         this.o.params = options.params;
         this.o.specialParams = options.specialParams;
@@ -63,7 +64,7 @@
 
                     // set a timeout after which simulate a click on the lazyLoad button
                     clearTimeout($lazyLoad.data('timeout'));
-                    let timer = setTimeout(function() {
+                    let timer = setTimeout(() => {
                         let anchor;
                         if ($lazyLoad.css('display') === 'none') {
                             $lazyLoad.css('display', 'inline-block');
@@ -73,7 +74,7 @@
                             anchor = $lazyLoad.offset().top;
                         }
 
-                        if ($(document).scrollTop() + $(window).height() > anchor) {
+                        if ($(document).scrollTop() + $(window).height() > anchor + this.o.lazyDynamicOffset) {
                             $lazyLoad.trigger('click');
                         }
                     }, this.o.lazyDynamicTimeout);
@@ -308,6 +309,7 @@
             lazyDynamic: false,
             lazyDynamicTimeout: 500,
             lazyDynamicDelayedStart: false,
+            lazyDynamicOffset: 0,
             query: '',
             params: {},
             specialParams: {},

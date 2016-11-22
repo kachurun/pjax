@@ -12,6 +12,7 @@
         this.o.lazyDynamic = options.lazyDynamic;
         this.o.lazyDynamicTimeout = options.lazyDynamicTimeout;
         this.o.lazyDynamicDelayedStart = options.lazyDynamicDelayedStart;
+        this.o.lazyDynamicOffset = options.lazyDynamicOffset;
         this.o.query = options.query;
         this.o.params = options.params;
         this.o.specialParams = options.specialParams;
@@ -79,7 +80,7 @@
                             anchor = $lazyLoad.offset().top;
                         }
 
-                        if ($(document).scrollTop() + $(window).height() > anchor) {
+                        if ($(document).scrollTop() + $(window).height() > anchor + _this2.o.lazyDynamicOffset) {
                             $lazyLoad.trigger('click');
                         }
                     }, _this2.o.lazyDynamicTimeout);
@@ -312,6 +313,7 @@
             lazyDynamic: false,
             lazyDynamicTimeout: 500,
             lazyDynamicDelayedStart: false,
+            lazyDynamicOffset: 0,
             query: '',
             params: {},
             specialParams: {},
